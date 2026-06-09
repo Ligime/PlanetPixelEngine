@@ -2,20 +2,19 @@
 
 use fastnoise_lite::{CellularDistanceFunction, CellularReturnType, FastNoiseLite};
 use rand::Rng;
-use sdl2::event::Event;
-use sdl2::surface::Surface;
+use sdl2::event::*;
+use sdl2::surface::*;
 use sdl2::image::*;
-use sdl2::keyboard::{Keycode, Scancode};
-use sdl2::mouse::MouseState;
-use sdl2::rect::{FRect, Rect};
-use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use sdl2::keyboard::*;
+use sdl2::mouse::*;
+use sdl2::rect::*;
+use std::sync::*;
+use std::time::*;
+use sdl2::pixels::*;
+
 use std::thread;
-use sdl2::pixels::{Color, PixelFormatEnum};
 
-
-
-use crate::cell_update::update_cell;
+use crate::cell_update::*;
 
 pub mod pixels;
 pub mod cell_update;
@@ -39,12 +38,9 @@ const OFFSET_Y:usize = 4;
 const CENT_ACT_REG32:i32 = (CELL_AMOUNT*CELL_AMOUNT*ACTIVE_REGS + CELL_AMOUNT) as i32;
 
 
-use crate::entity::{Entity, check_collision, update_player};
-use crate::shift::{make_big_cells, update_cells_x, update_cells_y, update_regions_x, update_regions_y};
-use crate::structs::Region;
-use crate::{structs::Cell, structs::DirtyRect};
-
-
+use crate::entity::*;
+use crate::shift::*;
+use crate::structs::*;
 
 fn place_line(cells: &mut Vec<Arc<Mutex<Cell>>>,mut x1:i32,x2:i32,mut y1:i32,y2:i32,id:u8, color:[u8;3], brush_size:i32){
     if x1 == x2 && y1 == y2{
@@ -94,7 +90,6 @@ fn place_line(cells: &mut Vec<Arc<Mutex<Cell>>>,mut x1:i32,x2:i32,mut y1:i32,y2:
 pub fn get_biome(biome_noise1:&FastNoiseLite,biome_noise2:&FastNoiseLite,x:f32, y:f32) -> u32{
     let biome_size = 200.;
     return (biome_noise1.get_noise_2d(x ,  y)*biome_size* biome_noise2.get_noise_2d(x, y)) as u32/8;
-
 }
 
 pub fn update_map(regions:&Vec<Region>, biome_noise1:&FastNoiseLite,biome_noise2:&FastNoiseLite) -> Vec<u8>{
@@ -175,7 +170,6 @@ pub fn screenshot(big_cells: &Vec<Arc<Mutex<Cell>>>){
 }
 
 pub fn main(){
-    let screen_scale: f32 = 4.0;
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
     let ttf_context = sdl2::ttf::init().map_err(|e| e.to_string()).unwrap();
@@ -187,10 +181,8 @@ pub fn main(){
         .unwrap();
     let mut canvas = window.clone().into_canvas().build().unwrap();
     let mut event_pump = sdl_context.event_pump().unwrap();
-
+    
     sdl_context.mouse().show_cursor(false);
-
-    canvas.set_scale(screen_scale, screen_scale).unwrap();
 
     let texture_creator = canvas.texture_creator();
 
@@ -211,7 +203,7 @@ pub fn main(){
 
 
 
-    let mut cell_texture = texture_creator.create_texture(PixelFormatEnum::ARGB8888, sdl2::render::TextureAccess::Static, (CELL_SIZE*CELL_AMOUNT) as u32, (CELL_SIZE*CELL_AMOUNT) as u32).unwrap();
+    let mut cell_texture = texture_creator.create_texture(PixelFormatEnum::ARGB8888, sdl2::render::TextureAccess::Streaming, (CELL_SIZE*CELL_AMOUNT) as u32, (CELL_SIZE*CELL_AMOUNT) as u32).unwrap();
     
     
     cell_texture.set_blend_mode(sdl2::render::BlendMode::Blend);
@@ -245,7 +237,7 @@ pub fn main(){
         animation:2,
     };
     
-    let mut camera = FRect::new((player.position[0]/(CELL_SIZE*CELL_AMOUNT) as f32).floor() *(CELL_AMOUNT*CELL_SIZE) as f32, (player.position[1]/(CELL_SIZE*CELL_AMOUNT) as f32).floor() *(CELL_AMOUNT*CELL_SIZE) as f32, 480., 270.);
+    let mut camera = FRect::new((player.position[0]/(CELL_SIZE*CELL_AMOUNT) as f32).floor() *(CELL_AMOUNT*CELL_SIZE) as f32, (player.position[1]/(CELL_SIZE*CELL_AMOUNT) as f32).floor() *(CELL_AMOUNT*CELL_SIZE) as f32, 1920./4., 1080./4.);
 
 
 
@@ -253,10 +245,7 @@ pub fn main(){
 
     let mut map_on_screen = false;
     
-
-
     window.set_fullscreen(sdl2::video::FullscreenType::Off).unwrap(); 
-    canvas.set_viewport(Rect::new(0, 0, camera.width() as u32, camera.height() as u32));
     
     let mut regions: Vec<Region> = vec![];
     for i in 0..REGION_AMOUNT*REGION_AMOUNT{
@@ -290,13 +279,16 @@ pub fn main(){
     
 
     let mut time = 0.;
-    let mut tickle = 0;
 
     let mut debug = false;
     'running: loop {
-        
+	let (win_w, win_y) = window.size();
+        let scale_x: f32 = 1.0_f32.max(4.0*(win_w as f32/1920.0));
+	let scale_y: f32 = 1.0_f32.max(4.0*(win_y as f32/1080.0));
+	canvas.set_scale(scale_x,scale_y).unwrap();
+	
         time += 0.016;
-
+	let mut shifted = false;
 
         use std::time::Instant;
         let now = Instant::now();
@@ -333,8 +325,6 @@ pub fn main(){
                 },
 
 
-
-
                 Event::MouseWheel { y, .. } =>{
                     brush_size += y;
                     brush_size = brush_size.max(1);
@@ -352,12 +342,12 @@ pub fn main(){
             }
         }
 
-        camera.set_x(camera.x() + (player.position[0] - camera.width()/2. -camera.x())*0.075);
+        camera.set_x(camera.x() + (player.position[0] - camera.width()/2. -camera.x() + player.size[0] as f32)*0.075);
         camera.set_y(camera.y() + (player.position[1] - camera.height()/2. -camera.y())*0.075);
 
         let mouse_info = MouseState::new(&event_pump);
-        let mouse_info_x = (mouse_info.x())/screen_scale as i32 + camera.x() as i32 % CELL_SIZE as i32 + (CELL_SIZE * OFFSET_X) as i32;
-        let mouse_info_y = (mouse_info.y())/screen_scale as i32 + camera.y() as i32 % CELL_SIZE as i32 + (CELL_SIZE * OFFSET_Y) as i32;
+        let mouse_info_x = (mouse_info.x() as f32/scale_x as f32) as i32 + camera.x() as i32 % CELL_SIZE as i32 + (CELL_SIZE * OFFSET_X) as i32;
+        let mouse_info_y = (mouse_info.y() as f32/scale_y as f32) as i32 + camera.y() as i32 % CELL_SIZE as i32 + (CELL_SIZE * OFFSET_Y) as i32;
 
         if shift_amount[0] != camera.x() as i32/CELL_SIZE as i32{
             let shift_delta = [-(shift_amount[0] - camera.x() as i32/CELL_SIZE as i32), -(shift_amount[1] - camera.y() as i32/(CELL_SIZE) as i32)];
@@ -377,7 +367,7 @@ pub fn main(){
                 update_cells_x(&mut cells, &mut big_cells, shift_delta, shift_position);
                 shift_amount[0] = camera.x() as i32/CELL_SIZE as i32;
             }
-
+	    shifted = true;
         }
 
 
@@ -401,10 +391,8 @@ pub fn main(){
                 update_cells_y(&mut cells, &mut big_cells, shift_delta, shift_position);
                 shift_amount[1] = camera.y() as i32/CELL_SIZE as i32;
             }
-
-
+	    shifted = true;
         }
-        
 
         if mouse_info_x >= 0 && mouse_info_x <= (CELL_AMOUNT*CELL_SIZE-1) as i32 && mouse_info_y >= 0 && mouse_info_y <= (CELL_AMOUNT*CELL_SIZE-1) as i32{
             if mouse_info.left(){
@@ -450,7 +438,6 @@ pub fn main(){
             }
             if i%REGION_AMOUNT > 0 && i%REGION_AMOUNT < REGION_AMOUNT-1 && i/REGION_AMOUNT > 0 && i/REGION_AMOUNT < REGION_AMOUNT-1{
                 canvas.copy_f(&bg_texture, None, FRect::new(-camera.x() + (regions[i].position[0]*(CELL_AMOUNT*CELL_SIZE) as i32) as f32, -camera.y() + (regions[i].position[1]*(CELL_AMOUNT*CELL_SIZE) as i32) as f32, (CELL_AMOUNT*CELL_SIZE) as f32, (CELL_AMOUNT*CELL_SIZE) as f32)).unwrap();
-
             }
         }
         
@@ -470,11 +457,10 @@ pub fn main(){
         canvas.copy_ex_f(&player_texture, Rect::new(((time*16.) as i32%4)*(player.size[0]+2) as i32, player.animation as i32*(player.size[1]+2) as i32, player.size[0] as u32, player.size[1] as u32), FRect::new(player.position[0]-camera.x(), player.position[1]-camera.y(), player.size[0] as f32, player.size[1] as f32),0., None,player.flip_h,false).unwrap();
         update_player(&mut player);
 
-        tickle %= 16;
         for j in (0..4).rev(){
             let mut threads = vec![];
 
-            for i in (j/2..CELL_AMOUNT).step_by(2){
+            for i in (j/2..CELL_AMOUNT).step_by(2).rev(){
                 for z in (j%2..CELL_AMOUNT).step_by(2){
                     let mut cells = cells.clone();
                     let cell_arc = cells[i*CELL_AMOUNT + z].clone();
@@ -482,11 +468,7 @@ pub fn main(){
                     let mut cell = cell_arc2.lock().unwrap();
 
                     cell.id = i*CELL_AMOUNT + z;
-                    if cell.id%16 == tickle{
-                        cell.rect = DirtyRect{x1:0, x2:CELL_SIZE,y1:0,y2:CELL_SIZE};
-                        cell.calculated_rect = DirtyRect{x1:0, x2:CELL_SIZE,y1:0,y2:CELL_SIZE};
-                    }
-                    if cell.rect.x1 + cell.rect.y1 + cell.rect.x2 + cell.rect.y2 != 0{
+                    if cell.rect.x1 + cell.rect.y1 + cell.rect.x2 + cell.rect.y2 > 0{
                         let thread = thread::spawn(move ||{
                         let cells = &mut cells;
                         let cell = &mut cell_arc.lock().unwrap();
@@ -499,20 +481,23 @@ pub fn main(){
                 thread.join().unwrap();
             };
         }
-        tickle += 1;
-
-
-        for i in 2..CELL_AMOUNT-2{
+	
+	for i in 2..CELL_AMOUNT-2{
             for j in 2..CELL_AMOUNT-2{
                 let cell_position = [j as i32, i  as i32];
                 let cell_arc = &cells[i*CELL_AMOUNT + j];
-                let cell = &cell_arc.lock().unwrap();	
-		cell_texture.update( Rect::new(cell_position[0]*CELL_SIZE as i32, cell_position[1]*CELL_SIZE as i32, CELL_SIZE as u32, CELL_SIZE as u32), &cell.pixel_data, PITCH).unwrap();
+                let cell = &cell_arc.lock().unwrap();
+		if cell.rect.x1 + cell.rect.y1 + cell.rect.x2 + cell.rect.y2 > 8 || shifted{		  
+		    cell_texture.update( Rect::new(cell_position[0]*CELL_SIZE as i32, cell_position[1]*CELL_SIZE as i32, CELL_SIZE as u32, CELL_SIZE as u32), &cell.pixel_data, PITCH).unwrap();
+
+		}
             }
-
-        }	
-
+	}
+	
         canvas.copy_f(&cell_texture, None,FRect::new( -camera.x %CELL_SIZE as f32 - (CELL_SIZE*OFFSET_X) as f32, -camera.y %CELL_SIZE as f32 - (CELL_SIZE*OFFSET_Y) as f32,(CELL_SIZE*CELL_AMOUNT) as f32, (CELL_SIZE*CELL_AMOUNT) as f32)).unwrap();
+
+
+	
         if debug{
             for i in 0..(CELL_AMOUNT*CELL_AMOUNT){
                 canvas.set_draw_color(Color::MAGENTA);
@@ -532,19 +517,14 @@ pub fn main(){
 
         debug_surface = font.render(&(player.position[1].to_string() + " y")).solid(Color::WHITE).unwrap();
         canvas.copy(&debug_surface.as_texture(&texture_creator).unwrap(), None, Rect::new( 0, 40,60, 20)).unwrap();
-
         if map_on_screen{
             canvas.copy(&map_texture, None, Rect::new(camera.width() as i32 - CELL_SIZE as i32,0, CELL_SIZE as u32, CELL_SIZE as u32)).unwrap();
         }
-
-
         canvas.set_draw_color(Color::WHITE);
-        canvas.draw_frect(FRect::new( mouse_info.x() as f32 /screen_scale - (brush_size /2) as f32, mouse_info.y() as f32/screen_scale - (brush_size /2) as f32, brush_size as f32, brush_size as f32)).unwrap();
-        
-
+        canvas.draw_frect(FRect::new( mouse_info.x() as f32 /scale_x - (brush_size /2) as f32, mouse_info.y() as f32/scale_y - (brush_size /2) as f32, brush_size as f32, brush_size as f32)).unwrap();      
 
         canvas.present();
-        ::std::thread::sleep(Duration::new(0, 16000000 - (elapsed.as_secs_f64()*1000000.0) as u32));
+        ::std::thread::sleep(Duration::new(0, (16000000 - (elapsed.as_secs_f64()*1000000.0) as i32).max(0) as u32));
 
     }
 

@@ -1,10 +1,10 @@
 use std::sync::{Arc, Mutex};
 
-use crate::{ACTIVE_REGS, CELL_AMOUNT, CENT_ACT_REG32, REGION_AMOUNT, pixels::Cell, structs::Region};
+use crate::*;
+use structs::*;
 
 pub fn make_big_cells(regions: &mut Vec<Region>, big_cells: &mut Vec<Arc<Mutex<Cell>>>){
     big_cells.clear();
-    assert!(big_cells.is_empty());
     for i in 0..ACTIVE_REGS{
         for y in 0..CELL_AMOUNT{
             for j in 0..ACTIVE_REGS{
@@ -66,7 +66,7 @@ pub fn update_cells_x(cells: &mut Vec<Arc<Mutex<Cell>>>, big_cells: &mut Vec<Arc
     if shift_delta[0] > 0{ //right
         cells.rotate_left(1);
         for i in 0..CELL_AMOUNT{ 
-            cells[(i+1)*CELL_AMOUNT-1] = big_cells[(CENT_ACT_REG32 + CELL_AMOUNT as i32 - 1  + (shift_position[1] + i as i32) * (CELL_AMOUNT * ACTIVE_REGS) as i32 + shift_position[0]) as usize].clone(); 
+            cells[(i+1)*CELL_AMOUNT-1] = big_cells[(CENT_ACT_REG32 + CELL_AMOUNT as i32 - 1  + (shift_position[1] + i as i32) * (CELL_AMOUNT * ACTIVE_REGS) as i32 + shift_position[0]) as usize].clone();
         }
     }
     else{ //left

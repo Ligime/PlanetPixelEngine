@@ -48,55 +48,43 @@ impl Pixel{
 }
 
 impl Cell{
-    pub fn rect_update(&mut self,mut x:isize,mut y:isize){
-        x = x * !(x < 0) as isize;
-        y = y * !(y < 0) as isize;
-        let mut x = x as usize;
-        let mut y = y as usize;
-        x = x * !(x > CELL_SIZE) as usize + (CELL_SIZE)*(x > CELL_SIZE) as usize;
-        y = y * !(y > CELL_SIZE) as usize + (CELL_SIZE)*(y > CELL_SIZE) as usize;
-        
-        self.rect.x1 = x*(self.rect.x1 + self.rect.x2 == 0)as usize + self.rect.x1*!(self.rect.x1 + self.rect.x2 == 0)as usize;
-        self.rect.y1 = y*(self.rect.y1 + self.rect.y2 == 0)as usize + self.rect.y1*!(self.rect.y1 + self.rect.y2 == 0)as usize;
-
-        self.rect.x1 = x*(x<self.rect.x1) as usize + self.rect.x1*!(x<self.rect.x1) as usize;
-        self.rect.x2 = x*(x>self.rect.x2) as usize + self.rect.x2*!(x>self.rect.x2) as usize;
-        self.rect.y1 = y*(y<self.rect.y1) as usize + self.rect.y1*!(y<self.rect.y1) as usize;
-        self.rect.y2 = y*(y>self.rect.y2) as usize + self.rect.y2*!(y>self.rect.y2) as usize;
-
-	self.calculated_rect.x1 = x*(self.calculated_rect.x1 + self.calculated_rect.x2 == 0)as usize + self.calculated_rect.x1*!(self.calculated_rect.x1 + self.calculated_rect.x2 == 0)as usize;
-        self.calculated_rect.y1 = y*(self.calculated_rect.y1 + self.calculated_rect.y2 == 0)as usize + self.calculated_rect.y1*!(self.calculated_rect.y1 + self.calculated_rect.y2 == 0)as usize;
-
-        self.calculated_rect.x1 = x*(x<self.calculated_rect.x1) as usize + self.calculated_rect.x1*!(x<self.calculated_rect.x1) as usize;
-        self.calculated_rect.x2 = x*(x>self.calculated_rect.x2) as usize + self.calculated_rect.x2*!(x>self.calculated_rect.x2) as usize;
-        self.calculated_rect.y1 = y*(y<self.calculated_rect.y1) as usize + self.calculated_rect.y1*!(y<self.calculated_rect.y1) as usize;
-        self.calculated_rect.y2 = y*(y>self.calculated_rect.y2) as usize + self.calculated_rect.y2*!(y>self.calculated_rect.y2) as usize;
+    pub fn rect_update(&mut self,x:usize,y:usize){
+	if self.rect.x1 + self.rect.y1 + self.rect.x2 + self.rect.y2 == 0{
+	    self.rect.x1 = x;
+            self.rect.x2 = x;
+	    self.rect.y1 = y;
+            self.rect.y2 = y;
+	}
+	if self.calculated_rect.x1 + self.calculated_rect.y1 + self.calculated_rect.x2 + self.calculated_rect.y2 == 0{
+	    self.calculated_rect.x1 = x;
+            self.calculated_rect.x2 = x;
+	    self.calculated_rect.y1 = y;
+            self.calculated_rect.y2 = y;
+	}
+        self.calculated_rect.x1 = self.calculated_rect.x1.min(x);
+        self.calculated_rect.x2 = self.calculated_rect.x2.max(x);
+        self.calculated_rect.y1 = self.calculated_rect.y1.min(y);
+        self.calculated_rect.y2 = self.calculated_rect.y2.max(y);
+	self.rect.x1 = self.rect.x1.min(x);
+        self.rect.x2 = self.rect.x2.max(x);
+        self.rect.y1 = self.rect.y1.min(y);
+        self.rect.y2 = self.rect.y2.max(y);
     }
 
-    pub fn rect_resize(&mut self, x:isize,y:isize){
-        let cal_x1 = self.calculated_rect.x1 as isize - x;
-        let cal_y1 = self.calculated_rect.y1 as isize - y;
-        let rect_x1 = self.rect.x1 as isize - x;
-        let rect_y1 = self.rect.y1 as isize - y;
-
-        self.calculated_rect.x2 += x as usize;
-        self.calculated_rect.y2 += y as usize;
-
-        self.rect.x2 += x as usize;
-        self.rect.y2 += y as usize;
-
-        self.calculated_rect.x1 = cal_x1.max(0) as usize;
-        self.calculated_rect.x2 = self.calculated_rect.x2.min(CELL_SIZE);
-        self.calculated_rect.y1 = cal_y1.max(0) as usize;
-        self.calculated_rect.y2 = self.calculated_rect.y2.min(CELL_SIZE);
-        self.rect.x1 = rect_x1.max(0) as usize;
-        self.rect.x2 = self.rect.x2.min(CELL_SIZE);
-        self.rect.y1 = rect_y1.max(0) as usize;
-        self.rect.y2 = self.rect.y2.min(CELL_SIZE);
+    pub fn rect_resize(&mut self, x:usize,y:usize){
+        self.calculated_rect.x1 = self.calculated_rect.x1.saturating_sub(x);
+	self.calculated_rect.x2 = self.calculated_rect.x2.saturating_add(x).min(CELL_SIZE);
+	self.calculated_rect.y1 = self.calculated_rect.y1.saturating_sub(y);
+	self.calculated_rect.y2 = self.calculated_rect.y2.saturating_add(y).min(CELL_SIZE);
+	self.rect.x1 = self.rect.x1.saturating_sub(x);
+	self.rect.x2 = self.rect.x2.saturating_add(x).min(CELL_SIZE);
+	self.rect.y1 = self.rect.y1.saturating_sub(y);
+	self.rect.y2 = self.rect.y2.saturating_add(y).min(CELL_SIZE);
+	
     }
     pub fn place_pixel(&mut self,x:usize,y:usize,id:u8,color:[u8;3]){
-        self.rect_update(x as isize -1, y as isize -1);
-        self.rect_update(x as isize + 1, y as isize + 1);
+        self.rect_update(x.saturating_sub(1), y.saturating_sub(1));
+        self.rect_update(x.saturating_add(1), y.saturating_add(1));
         self.grid[y*CELL_SIZE + x] = Pixel::new(id, color);
 
         self.pixel_data[y*PITCH + x*PITCH_SIZE + 0] = self.grid[y*CELL_SIZE + x].color[0];
@@ -123,7 +111,8 @@ impl Cell{
         noise.set_noise_type(Some(fastnoise_lite::NoiseType::Value));
         let mut world_position:[i32;2] = [0,0];
         noise.frequency = biome as f32/10.;
-
+	self.rect = DirtyRect{x1:0, x2:CELL_SIZE,y1:0,y2:CELL_SIZE};
+	self.calculated_rect = DirtyRect{x1:0, x2:CELL_SIZE,y1:0,y2:CELL_SIZE};
         world_position[0] = (cell_position[0]+region_position[0]*CELL_AMOUNT as i32)*CELL_SIZE as i32;
         world_position[1] = (cell_position[1]+region_position[1]*CELL_AMOUNT as i32)*CELL_SIZE as i32;
         

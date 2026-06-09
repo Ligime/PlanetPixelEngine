@@ -71,7 +71,8 @@ pub fn try_move(cell:&mut Cell, cells: &mut Vec<Arc<Mutex<Cell>>>, x1:usize, y1:
             let temp = cell.grid[y1*CELL_SIZE + x1];
             cell.grid[y1*CELL_SIZE + x1] = cell.grid[y2*CELL_SIZE + x2];
             cell.grid[y2*CELL_SIZE + x2] = temp;
-            cell.rect_update(x2 as isize, y2 as isize);
+            cell.rect_update(x2, y2);
+	    cell.rect_update(x1, y1);
             
             return true;
         }
@@ -86,7 +87,8 @@ pub fn try_move(cell:&mut Cell, cells: &mut Vec<Arc<Mutex<Cell>>>, x1:usize, y1:
         if density2 < density1{
             cell2.grid[y2*CELL_SIZE + x2].speed = [1,1];
             mem::swap(&mut cell.grid[y1*CELL_SIZE + x1], &mut cell2.grid[y2*CELL_SIZE + x2]);
-            cell2.rect_update(x2 as isize, y2 as isize);
+	    cell.rect_update(x1, y1);
+            cell2.rect_update(x2, y2);
             return true;
         }
     }
@@ -142,7 +144,7 @@ pub fn try_grow(cell:&mut Cell, cells: &mut Vec<Arc<Mutex<Cell>>>, x1:usize, y1:
             cell.grid[y2*CELL_SIZE + x2].color[0] = (cell.grid[y2*CELL_SIZE + x2].color[0] as i32 + (random as i32%32 -16)) as u8 %64;
             cell.grid[y2*CELL_SIZE + x2].color[1] = (cell.grid[y2*CELL_SIZE + x2].color[1] as i32 + (random as i32%32 -16)) as u8 % 150 + 64;
             cell.grid[y2*CELL_SIZE + x2].color[2] = (cell.grid[y2*CELL_SIZE + x2].color[2] as i32 + (random as i32%32 -16)) as u8 %64;
-            cell.rect_update(x2 as isize, y2 as isize);
+            cell.rect_update(x2, y2);
             
             return true;
         }
@@ -154,7 +156,7 @@ pub fn try_grow(cell:&mut Cell, cells: &mut Vec<Arc<Mutex<Cell>>>, x1:usize, y1:
         let cell2 = &mut cell_arc.lock().unwrap();
         if cell2.grid[y2*CELL_SIZE + x2].id == 0{
             cell2.grid[y2*CELL_SIZE + x2] = cell.grid[y1*CELL_SIZE + x1];
-            cell2.rect_update(x2 as isize, y2 as isize);
+            cell2.rect_update(x2, y2);
             return true;
         }
     }
@@ -208,7 +210,7 @@ pub fn try_grow_destroy(cell:&mut Cell, cells: &mut Vec<Arc<Mutex<Cell>>>, x1:us
             cell.grid[y2*CELL_SIZE + x2].color[0] = (cell.grid[y2*CELL_SIZE + x2].color[0] as i32 + (random as i32%33 -16)) as u8 ;
             cell.grid[y2*CELL_SIZE + x2].color[1] = (cell.grid[y2*CELL_SIZE + x2].color[1] as i32 + (random as i32%32 -16)) as u8  + 64;
             cell.grid[y2*CELL_SIZE + x2].color[2] = (cell.grid[y2*CELL_SIZE + x2].color[2] as i32 + (random as i32%31 -16)) as u8 ;
-            cell.rect_update(x2 as isize, y2 as isize);
+            cell.rect_update(x2, y2);
             cell.grid[y1*CELL_SIZE + x1] = Pixel::new(0, [0,0,0]);
             return true;
         }
@@ -220,7 +222,7 @@ pub fn try_grow_destroy(cell:&mut Cell, cells: &mut Vec<Arc<Mutex<Cell>>>, x1:us
         let cell2 = &mut cell_arc.lock().unwrap();
         if cell2.grid[y2*CELL_SIZE + x2].id == 0{
             cell2.grid[y2*CELL_SIZE + x2] = cell.grid[y1*CELL_SIZE + x1];
-            cell2.rect_update(x2 as isize, y2 as isize);
+            cell2.rect_update(x2, y2);
             cell.grid[y1*CELL_SIZE + x1] = Pixel::new(0, [0,0,0]);
             return true;
         }
