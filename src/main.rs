@@ -139,6 +139,7 @@ pub fn update_map(regions:&Vec<Region>, biome_noise1:&FastNoiseLite,biome_noise2
                 map_data.push(255);
                 map_data.push(255);
             } 
+
             else {
                 map_data.push(b);
                 map_data.push(g);
